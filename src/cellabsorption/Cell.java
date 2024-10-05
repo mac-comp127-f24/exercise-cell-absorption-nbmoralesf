@@ -1,7 +1,5 @@
 package cellabsorption;
 
-// import java.util.Random;
-
 import edu.macalester.graphics.Ellipse;
 import edu.macalester.graphics.Point;
 
@@ -9,11 +7,16 @@ import java.awt.Color;
 
 public class Cell {
 
+    public static final double
+        WIGGLINESS = 0.2,
+        WANDER_FROM_CENTER = 60000;
+
     private Ellipse shape;
+    public Ellipse getShape() {
+        return shape;
+    }
     private double radius;
     private double direction;
-
-    // private Random rand = new Random();
 
     public Cell(double x, double y, double radius, Color color) {
         createCell(x, y, radius, color);
@@ -50,22 +53,53 @@ public class Cell {
 
         direction = normalizeRadians(
             direction
-                + (Math.random() - 0.5) * CellSimulation.WIGGLINESS
-                + turnTowardCenter * Math.tanh(distToCenter / CellSimulation.WANDER_FROM_CENTER));
+                + (Math.random() - 0.5) * WIGGLINESS
+                + turnTowardCenter * Math.tanh(distToCenter / WANDER_FROM_CENTER));
     }
 
-    public Ellipse getShape() {
-        return shape;
-    }
-    // private static double sqr(double x) {
-    //     return x * x;
-    // }
-
-    private static double normalizeRadians(double theta) {
+    public static double normalizeRadians(double theta) {
         double pi2 = Math.PI * 2;
         return ((theta + Math.PI) % pi2 + pi2) % pi2 - Math.PI;
     }
-    // public double getRadius() {
-    //     return radius;
-    // }
+    public Point getCenter() {
+        return shape.getCenter();
+    }
+
+    /**
+     * Causes this cell to interact with the other given cell. If the two
+     * cells overlap and both have a positive radius, then the larger cell
+     * absorbs area from the smaller cell so that the total area is the
+     * same, but the two cells are now tangent.
+     */
+    public void interactWith(Cell otherCell) {
+        if (radius == 0 || otherCell.radius == 0) {
+            return;
+        }
+        if (overlapAmount(otherCell) < 0) {
+            return;
+        }
+
+        if (radius > otherCell.radius) {
+            absorb(otherCell);
+        } else {
+            otherCell.absorb(this);
+        }
+    }
+
+    private double overlapAmount(Cell otherCell) {
+        return radius + otherCell.radius - getCenter().distance(otherCell.getCenter());
+    }
+
+    public void absorb(Cell otherCell) {
+        double d = getCenter().distance(otherCell.getCenter());
+        double a = sqr(radius) + sqr(otherCell.radius);
+        double newRadius = (d + Math.sqrt(2 * a - sqr(d))) / 2;
+
+        setRadius(newRadius);
+        otherCell.setRadius(d - newRadius);
+    }
+
+    private static double sqr(double x) {
+        return x * x;
+    }
 }
